@@ -194,113 +194,136 @@ def scan_and_read_image(file):
 st.set_page_config(layout="wide")
 st.title(':green[BizCard Scanner]')
 st.divider()
-tab1,tab2,tab3=st.tabs(['1.Upload and Scan BizCard','2.View Details','3.Modify Details'])
-with tab1: 
-    st.write('\n\n')
-    uploaded_files = st.file_uploader("Browse image file(s) to upload and scan", accept_multiple_files=True)
-    if uploaded_files:
-        create_db_objects()
-        for file in uploaded_files:
-            query_status=scan_and_read_image(file.name)
-            st.write(f'Rows affected:{query_status}')
-with tab2:
-    st.write('\n\n')
-    st.subheader('Data in MySQL')
-    if tab2:
-        query1=''' SELECT ID,COMPANY_NAME,CARD_HOLDER,DESIGNATION,MOBILE_NUMBER,EMAIL,WEBSITE,AREA,CITY,STATE,PINCODE FROM bizcard.bizcards;'''
-        df1,query_status=query_db(query1)
-        df1.rename(columns={0:'ROW_ID',1:'COMPANY_NAME', 2:'CARD_HOLDER', 3:'DESIGNATION', 4:'MOBILE_NUMBER', 5:'EMAIL', 6:'WEBSITE', 7:'AREA', 8:'CITY', 9:'STATE', 10:'PINCODE'},inplace=True)
-        st.write(df1[df1.columns[0:-1]])
+with st.container(height=500):
+    tab1,tab2=st.tabs(['1.Upload and Scan BizCard','2.View and Modify Details'])
+    with tab1: 
+        st.write('\n\n')
+        uploaded_files = st.file_uploader("Browse image file(s) to upload and scan", accept_multiple_files=True)
+        if uploaded_files:
+            create_db_objects()
+            for file in uploaded_files:
+                query_status=scan_and_read_image(file.name)
+                st.write(f'Rows affected:{query_status}')
 
-with tab3:
-    st.write('\n\n')
-    st.subheader('Modify Data in MySQL')
-    query1=''' SELECT * FROM bizcard.bizcards;'''
-    df,query_status=query_db(query1)
-#    st.write('data from function:',df)
-    df.rename(columns={0:'ROW_ID',1:'COMPANY_NAME', 2:'CARD_HOLDER', 3:'DESIGNATION', 4:'MOBILE_NUMBER', 5:'EMAIL', 6:'WEBSITE', 7:'AREA', 8:'CITY', 9:'STATE', 10:'PINCODE', 11:'MODIFIER'},inplace=True)
-#    st.write('df:',df)
-    df['MODIFIER']=df['MODIFIER'].astype({'MODIFIER': 'bool'})
-    st.data_editor(df,
-    column_config={
-        "MODIFIER": st.column_config.CheckboxColumn(
-            "Delete",
-            help="check the box if you want delete the row",
-            default=False
-        )
-    },
-    
-    num_rows="dynamic",
-    key='id_key',
-    hide_index=True)
-    col1,col2=st.columns(2)
-    with col1:
-        update=st.button('Update details')
-        if update:
-#            st.write(st.session_state['id_key'])
-            modification=[]
-            deletes=[]
-            edits=st.session_state['id_key']
-#            st.write('Edits made by user:',edits)
-            for item in edits["edited_rows"]:
-                mod_row=df.loc[item]['ROW_ID']           
-                # 1 get company name
-                try:
-                    modification.append(' COMPANY_NAME=\''+edits["edited_rows"][item]['COMPANY_NAME']+'\'')
-                except:
-                    pass
-                # 2 get CARD_HOLDER
-                try:
-                    modification.append(' CARD_HOLDER=\''+edits["edited_rows"][item]['CARD_HOLDER']+'\'') 
-                except:
-                    pass                 
-                # 3 get DESIGNATION
-                try:
-                    modification.append(' DESIGNATION=\''+edits["edited_rows"][item]['DESIGNATION']+'\'') 
-                except:
-                    pass                                    
-                # 2 get MOBILE_NUMBER
-                try:
-                    modification.append(' MOBILE_NUMBER=\''+edits["edited_rows"][item]['MOBILE_NUMBER']+'\'') 
-                except:
-                    pass                                 
-                # 5 get EMAIL
-                try:
-                    modification.append(' EMAIL=\''+edits["edited_rows"][item]['EMAIL']+'\'') 
-                except:
-                    pass                                 
-                # 6 get WEBSITE
-                try:
-                    modification.append(' WEBSITE=\''+edits["edited_rows"][item]['WEBSITE']+'\'') 
-                except:
-                    pass                                 
-                # 8 get AREA
-                try:
-                    modification.append(' AREA=\''+edits["edited_rows"][item]['AREA']+'\'') 
-                except:
-                    pass                                 
-                # 9 get CARD_HOLDER
-                try:
-                    modification.append(' CITY=\''+edits["edited_rows"][item]['CITY']+'\'') 
-                except:
-                    pass   
-                # 10 get STATE
-                try:
-                    modification.append(' STATE=\''+edits["edited_rows"][item]['STATE']+'\'') 
-                except:
-                    pass                       
-                # 10 get PINCODE
-                try:
-                    modification.append(' PINCODE=\''+edits["edited_rows"][item]['PINCODE']+'\'') 
-                except:
-                    pass  
-                # 11 MODIFIER
-                try:
-                    delete=edits["edited_rows"][item]['MODIFIER']             
-                    if delete==True:
-                        del_row=df.loc[item]['ROW_ID']  
-                except:
-                    pass  
-                query='UPDATE bizcard.bizcards SET '+','.join(modification)+' WHERE ID='+str(mod_row)+';'
-                df_out,status=query_db(query)
-                streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
+    with tab2:
+        with st.container(height=350):
+            st.write('\n\n')
+            st.subheader('MySQL data')
+            query1=''' SELECT * FROM bizcard.bizcards;'''
+            df,query_status=query_db(query1)
+            df.rename(columns={0:'ROW_ID',1:'COMPANY_NAME', 2:'CARD_HOLDER', 3:'DESIGNATION', 4:'MOBILE_NUMBER', 5:'EMAIL', 6:'WEBSITE', 7:'AREA', 8:'CITY', 9:'STATE', 10:'PINCODE', 11:'MODIFIER'},inplace=True)
+        #    st.write('df:',df)
+            df['MODIFIER']=df['MODIFIER'].astype({'MODIFIER': 'bool'})
+            st.data_editor(df,
+            column_config={
+                "MODIFIER": st.column_config.CheckboxColumn(
+                    "Delete",
+                    help="check the box if you want delete the row",
+                    default=False
+                )
+            },
+            
+            num_rows="dynamic",
+            key='id_key',
+            hide_index=True)
+        col1,col2=st.columns(2,gap='small') 
+        with col1:
+            update=st.button('Submit Changes')
+            if update:
+    #            st.write(st.session_state['id_key'])
+                modification=[]
+                deletes=[]
+                edits=st.session_state['id_key']
+    #            st.write('Edits made by user:',edits)
+                for item in edits["edited_rows"]:
+                    mod_row=df.loc[item]['ROW_ID']           
+                    # 1 get company name
+                    try:
+                        modification.append(' COMPANY_NAME=\''+edits["edited_rows"][item]['COMPANY_NAME']+'\'')
+                    except:
+                        pass
+                    # 2 get CARD_HOLDER
+                    try:
+                        modification.append(' CARD_HOLDER=\''+edits["edited_rows"][item]['CARD_HOLDER']+'\'') 
+                    except:
+                        pass                 
+                    # 3 get DESIGNATION
+                    try:
+                        modification.append(' DESIGNATION=\''+edits["edited_rows"][item]['DESIGNATION']+'\'') 
+                    except:
+                        pass                                    
+                    # 2 get MOBILE_NUMBER
+                    try:
+                        modification.append(' MOBILE_NUMBER=\''+edits["edited_rows"][item]['MOBILE_NUMBER']+'\'') 
+                    except:
+                        pass                                 
+                    # 5 get EMAIL
+                    try:
+                        modification.append(' EMAIL=\''+edits["edited_rows"][item]['EMAIL']+'\'') 
+                    except:
+                        pass                                 
+                    # 6 get WEBSITE
+                    try:
+                        modification.append(' WEBSITE=\''+edits["edited_rows"][item]['WEBSITE']+'\'') 
+                    except:
+                        pass                                 
+                    # 8 get AREA
+                    try:
+                        modification.append(' AREA=\''+edits["edited_rows"][item]['AREA']+'\'') 
+                    except:
+                        pass                                 
+                    # 9 get CARD_HOLDER
+                    try:
+                        modification.append(' CITY=\''+edits["edited_rows"][item]['CITY']+'\'') 
+                    except:
+                        pass   
+                    # 10 get STATE
+                    try:
+                        modification.append(' STATE=\''+edits["edited_rows"][item]['STATE']+'\'') 
+                    except:
+                        pass                       
+                    # 10 get PINCODE
+                    try:
+                        modification.append(' PINCODE=\''+edits["edited_rows"][item]['PINCODE']+'\'') 
+                    except:
+                        pass  
+                    # delete rows
+                    try:
+                        delete=edits["edited_rows"][item]['MODIFIER']             
+                        if delete==True:
+                            del_row=df.loc[item]['ROW_ID']
+                            query='delete from bizcard.bizcards WHERE ID='+str(del_row)+';'
+                            df_out,status=query_db(query)                        
+                    except:
+                        pass  
+                    ## Update rows    
+                    try:    
+                        query='UPDATE bizcard.bizcards SET '+','.join(modification)+' WHERE ID='+str(mod_row)+';'
+                        df_out,status=query_db(query)
+                    except:
+                        pass
+
+                        
+                    streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
+            with col2:
+                if st.button('Remove duplicates'):
+                    query=''' WITH DATASET AS (SELECT ROW_NUMBER() OVER(PARTITION BY COMPANY_NAME,CARD_HOLDER,DESIGNATION,MOBILE_NUMBER,EMAIL,WEBSITE,AREA,CITY,STATE,PINCODE)ROW_NUM,
+                            `bizcards`.`ID`,
+                            `bizcards`.`COMPANY_NAME`,
+                            `bizcards`.`CARD_HOLDER`,
+                            `bizcards`.`DESIGNATION`,
+                            `bizcards`.`MOBILE_NUMBER`,
+                            `bizcards`.`EMAIL`,
+                            `bizcards`.`WEBSITE`,
+                            `bizcards`.`AREA`,
+                            `bizcards`.`CITY`,
+                            `bizcards`.`STATE`,
+                            `bizcards`.`PINCODE`,
+                            `bizcards`.`MODIFIER`
+                                                FROM `bizcard`.`bizcards`)
+                            DELETE FROM `bizcard`.`bizcards`
+                            WHERE ID IN  
+                            (SELECT ID FROM DATASET A WHERE ROW_NUM>1);
+                             '''
+                    query_db(query)
+                    streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
