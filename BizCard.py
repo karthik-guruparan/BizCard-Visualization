@@ -1,7 +1,6 @@
 from os.path import isfile
 from PIL import Image
 from streamlit_js_eval import streamlit_js_eval
-import streamlit_antd_components as sac
 import streamlit as st
 import easyocr
 import re
@@ -101,8 +100,12 @@ def scan_and_read_image(file):
     COMPANY_NAME=result_para[len(result_para)-1][1] ## Company name
     CARD_HOLDER=result[0][1]## Cardholder name
     DESIGNATION=result[1][1]## designation
-
+    
+    for data in result_para:
+        st.write('para',data[1])
+    
     for data in result:
+        st.write(data[1])
         if re.search('[0-9]+-{1}[0-9]{3}-{1}[0-9]{4}',data[1]):
             if re.search('[+]',data[1]):
                 MOBILE_NUMBER.append(data[1]) ## mobile number
@@ -131,9 +134,35 @@ def scan_and_read_image(file):
                 STATE=location[2] #state
             except:
                 pass
+        elif re.search('St',data[1]):
+            try:
+                AREA=data[1] #area 
+                if re.search('\s',data[1]):
+                    try:
+                        temp=re.split(' ',data[1])
+                        STATE=temp[len(temp)-1] #state
+                    except:
+                        pass  
+                if re.search(',',data[1]):
+                    try:
+                        data[1]=data[1].replace(' ',',')
+                        st.write('checkpoint',data[1])
+                        temp=re.split(',',data[1])
+                        city=temp[len(temp)-2] # city
+                    except:
+                        pass                                        
+            except:
+                pass   
         elif re.search('[0-9]{6}',data[1]):
             temp=re.split(' ',data[1])
-            PINCODE=[x for x in temp if x.isdigit()] #pin code.
+            PINCODE=[x for x in temp if x.isdigit()] #pin code.                
+            if re.search('\s',data[1]):
+                try:
+                    temp=re.split('\s',data[1])
+                    STATE=temp[0] #state
+                except:
+                    pass
+
     value=(COMPANY_NAME,CARD_HOLDER,DESIGNATION,','.join(MOBILE_NUMBER),EMAIL,WEBSITE,AREA,CITY,STATE,''.join(PINCODE),0)
     # Insert data into bizcard table
     query=''' INSERT INTO bizcard.bizcards (COMPANY_NAME,CARD_HOLDER,DESIGNATION,MOBILE_NUMBER,EMAIL,WEBSITE,AREA,CITY,STATE,PINCODE,MODIFIER) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s); '''
@@ -156,7 +185,7 @@ try:
                 create_db_objects()
                 for file in uploaded_files:
                     query_status=scan_and_read_image(file.name)
-                streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
+                #streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
     
 
     with tab2:
@@ -167,7 +196,7 @@ try:
         df,query_status=query_db(query1)
         df.rename(columns={0:'ROW_ID',1:'COMPANY_NAME', 2:'CARD_HOLDER', 3:'DESIGNATION', 4:'MOBILE_NUMBER', 5:'EMAIL', 6:'WEBSITE', 7:'AREA', 8:'CITY', 9:'STATE', 10:'PINCODE', 11:'MODIFIER'},inplace=True)
         df['MODIFIER']=df['MODIFIER'].astype({'MODIFIER': 'bool'})
-        st.data_editor(df,
+        st.data_editor(df[['COMPANY_NAME','CARD_HOLDER','DESIGNATION','MOBILE_NUMBER','EMAIL','WEBSITE','AREA','CITY','STATE','PINCODE','MODIFIER']],
         column_config={
             "MODIFIER": st.column_config.CheckboxColumn(
                 "Delete",
@@ -180,19 +209,12 @@ try:
         key='id_key',
         hide_index=True)
         col1,col2,col3=st.columns(3)
-#        sac.buttons([
-#        sac.ButtonsItem(label='button'),
-#        sac.ButtonsItem(label='google', icon='google', color='#25C3B0'),
-#        sac.ButtonsItem(label='wechat', icon='wechat'),
-#        sac.ButtonsItem(label='disabled', disabled=True),
-#        sac.ButtonsItem(label='link', icon='share-fill', href='https://ant.design/components/button'),
-#        ], label='label', align='center')
         with col1:
-            update=st.button('Submit Changes',color=)
+            update=st.button('Submit Changes')
             if update:
-    #            st.write(st.session_state['id_key'])
+#                st.write(st.session_state['id_key'])
                 edits=st.session_state['id_key']
-                st.write('Edits made by user:',edits)
+#                st.write('Edits made by user:',edits)
                 for item in edits["edited_rows"]:
                     modification=[]
                     deletes=[]                    
