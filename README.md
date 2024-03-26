@@ -23,6 +23,74 @@ To execute this app on your machine, ensure to have the following configured in 
         pip install pandas
 5. As I have used MySQL workbench as DB, I would recommend installing the same. Although you may install DB of your choice but you may need to alter the sql based on the DB's syntax. (https://dev.mysql.com/downloads/installer/)
 
+## Code walkthrough
+1. First we import required packages as shown below
+
+                                 from os.path import isfile
+                                 from PIL import Image
+                                 from streamlit_js_eval import streamlit_js_eval
+                                 import streamlit as st
+                                 import easyocr
+                                 import re
+                                 import mysql.connector as mysql
+                                 import pandas as pd
+                                 import os
+
+2. Enter the path where you have the business card images in the "filepath" variable and path where modified images need to be stored in "filepath_mod" variable.
+
+                                    filepath='../data/ocr/'
+                                    filepath_mod='../data/ocr/modified/'
+   
+4. The following functions  will create the required MySQL DB objects.
+
+                                    def create_db_objects():
+                                     connection=mysql.connect(
+                                                             host='localhost',
+                                                             user='root',
+                                                             password='12345678',
+                                                             port=3306,
+                                                             auth_plugin='mysql_native_password'
+                                                             )
+                                     cursor=connection.cursor(buffered=True)
+                                 
+                                 
+                                 # DB CREATION
+                                     try:
+                                         query='''
+                                                   CREATE DATABASE bizcard;
+                                               '''
+                                         cursor.execute(query)
+                                         connection.commit()
+                                         st.success('MySQL DB created')
+                                     except:
+                                         st.info('MySQL DB already exists')
+                                 
+                                 # Table creation
+                                     try:
+                                         query='''
+                                                   CREATE TABLE bizcard.bizcards(
+                                                                                `ID` BIGINT NOT NULL AUTO_INCREMENT,
+                                                                                 COMPANY_NAME  varchar(100),
+                                                                                 CARD_HOLDER   varchar(100),
+                                                                                 DESIGNATION   varchar(100),
+                                                                                 MOBILE_NUMBER varchar(100),
+                                                                                 EMAIL         varchar(100),
+                                                                                 WEBSITE       varchar(100),
+                                                                                 AREA          varchar(100),
+                                                                                 CITY          varchar(100),
+                                                                                 STATE         varchar(100),
+                                                                                 PINCODE       varchar(100),
+                                                                                 MODIFIER TINYINT NOT NULL DEFAULT 0 ,
+                                                                                 PRIMARY KEY (`ID`)
+                                                                                 );
+                                               '''
+                                         cursor.execute(query)
+                                         connection.commit()
+                                         st.success('MySQL table created')
+                                     except:
+                                         st.info('MySQL table already exists')
+                                         pass
+
 ## Application walkthrough
 1. Once the pre-requisites are achieved activate the virtual environment and run the following command.
 
