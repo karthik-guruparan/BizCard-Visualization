@@ -101,11 +101,11 @@ def scan_and_read_image(file):
     CARD_HOLDER=result[0][1]## Cardholder name
     DESIGNATION=result[1][1]## designation
     
-    for data in result_para:
-        st.write('para',data[1])
+#    for data in result_para:
+#        st.write('para',data[1])
     
     for data in result:
-        st.write(data[1])
+#        st.write(data[1])
         if re.search('[0-9]+-{1}[0-9]{3}-{1}[0-9]{4}',data[1]):
             if re.search('[+]',data[1]):
                 MOBILE_NUMBER.append(data[1]) ## mobile number
@@ -146,7 +146,6 @@ def scan_and_read_image(file):
                 if re.search(',',data[1]):
                     try:
                         data[1]=data[1].replace(' ',',')
-                        st.write('checkpoint',data[1])
                         temp=re.split(',',data[1])
                         city=temp[len(temp)-2] # city
                     except:
@@ -185,7 +184,7 @@ try:
                 create_db_objects()
                 for file in uploaded_files:
                     query_status=scan_and_read_image(file.name)
-                #streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
+                streamlit_js_eval(js_expressions="parent.window.location.reload()") # Refresh page after executing query
     
 
     with tab2:
