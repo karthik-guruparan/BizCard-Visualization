@@ -43,53 +43,167 @@ To execute this app on your machine, ensure to have the following configured in 
    
 4. The following functions  will create the required MySQL DB objects.
 
-                                    def create_db_objects():
-                                     connection=mysql.connect(
-                                                             host='localhost',
-                                                             user='root',
-                                                             password='12345678',
-                                                             port=3306,
-                                                             auth_plugin='mysql_native_password'
-                                                             )
-                                     cursor=connection.cursor(buffered=True)
-                                 
-                                 
-                                 # DB CREATION
-                                     try:
-                                         query='''
-                                                   CREATE DATABASE bizcard;
-                                               '''
-                                         cursor.execute(query)
-                                         connection.commit()
-                                         st.success('MySQL DB created')
-                                     except:
-                                         st.info('MySQL DB already exists')
-                                 
-                                 # Table creation
-                                     try:
-                                         query='''
-                                                   CREATE TABLE bizcard.bizcards(
-                                                                                `ID` BIGINT NOT NULL AUTO_INCREMENT,
-                                                                                 COMPANY_NAME  varchar(100),
-                                                                                 CARD_HOLDER   varchar(100),
-                                                                                 DESIGNATION   varchar(100),
-                                                                                 MOBILE_NUMBER varchar(100),
-                                                                                 EMAIL         varchar(100),
-                                                                                 WEBSITE       varchar(100),
-                                                                                 AREA          varchar(100),
-                                                                                 CITY          varchar(100),
-                                                                                 STATE         varchar(100),
-                                                                                 PINCODE       varchar(100),
-                                                                                 MODIFIER TINYINT NOT NULL DEFAULT 0 ,
-                                                                                 PRIMARY KEY (`ID`)
-                                                                                 );
-                                               '''
-                                         cursor.execute(query)
-                                         connection.commit()
-                                         st.success('MySQL table created')
-                                     except:
-                                         st.info('MySQL table already exists')
-                                         pass
+                         def create_db_objects():
+                          connection=mysql.connect(
+                                                  host='localhost',
+                                                  user='root',
+                                                  password='12345678',
+                                                  port=3306,
+                                                  auth_plugin='mysql_native_password'
+                                                  )
+                          cursor=connection.cursor(buffered=True)
+                      
+                      
+                      # DB CREATION
+                          try:
+                              query='''
+                                        CREATE DATABASE bizcard;
+                                    '''
+                              cursor.execute(query)
+                              connection.commit()
+                              st.success('MySQL DB created')
+                          except:
+                              st.info('MySQL DB already exists')
+                      
+                      # Table creation
+                          try:
+                              query='''
+                                        CREATE TABLE bizcard.bizcards(
+                                                                     `ID` BIGINT NOT NULL AUTO_INCREMENT,
+                                                                      COMPANY_NAME  varchar(100),
+                                                                      CARD_HOLDER   varchar(100),
+                                                                      DESIGNATION   varchar(100),
+                                                                      MOBILE_NUMBER varchar(100),
+                                                                      EMAIL         varchar(100),
+                                                                      WEBSITE       varchar(100),
+                                                                      AREA          varchar(100),
+                                                                      CITY          varchar(100),
+                                                                      STATE         varchar(100),
+                                                                      PINCODE       varchar(100),
+                                                                      MODIFIER TINYINT NOT NULL DEFAULT 0 ,
+                                                                      PRIMARY KEY (`ID`)
+                                                                      );
+                                    '''
+                              cursor.execute(query)
+                              connection.commit()
+                              st.success('MySQL table created')
+                          except:
+                              st.info('MySQL table already exists')
+                              pass
+
+5. The following functions scan the business card images and queries the database.
+
+           def scan_and_read_image(file):
+    data=filepath+file
+    img=Image.open(data)
+    img=img.resize((500,300)) # Resizing the image
+    img.save(filepath_mod+file)
+    reader=easyocr.Reader(['en'],gpu=False) 
+    result_para=reader.readtext(filepath_mod+file,decoder='greedy',min_size=2,paragraph=True) # Scan the image
+    result=reader.readtext(filepath_mod+file,decoder='greedy',min_size=2,beamWidth=15,paragraph=False) # Scan the image
+    # Variables for data storage
+    COMPANY_NAME='' 
+    CARD_HOLDER='' 
+    DESIGNATION='' 
+    MOBILE_NUMBER=[]
+    EMAIL='' 
+    WEBSITE='' 
+    AREA='' 
+    CITY='' 
+    STATE='' 
+    PINCODE='' 
+
+    COMPANY_NAME=result_para[len(result_para)-1][1] ## Company name
+    CARD_HOLDER=result[0][1]## Cardholder name
+    DESIGNATION=result[1][1]## designation
+    
+#    for data in result_para:
+#        st.write('para',data[1])
+    
+    for data in result:
+#        st.write(data[1])
+        if re.search('[0-9]+-{1}[0-9]{3}-{1}[0-9]{4}',data[1]):
+            if re.search('[+]',data[1]):
+                MOBILE_NUMBER.append(data[1]) ## mobile number
+            else:
+                MOBILE_NUMBER.append('+'+data[1])
+        elif re.search('@',data[1]):
+            EMAIL=data[1] ## email address
+        elif re.search('com',data[1]) :
+            if re.search('^[wW]{3}',data[1].lower().replace('www','')):
+                WEBSITE=data[1] #website URL
+            else:
+                WEBSITE='www.'+data[1].lower().replace('www','').replace(' ','')      
+        elif len(re.findall(',',data[1]))>1:
+            location=[]
+            try:
+                location=re.split(',',data[1])
+                location.remove('')
+                AREA=location[0] #area 
+            except:
+                pass
+            try:
+                CITY=location[1] #city
+            except:
+                pass 
+            try:
+                STATE=location[2] #state
+            except:
+                pass
+        elif re.search('St',data[1]):
+            try:
+                AREA=data[1] #area 
+                if re.search('\s',data[1]):
+                    try:
+                        temp=re.split(' ',data[1])
+                        STATE=temp[len(temp)-1] #state
+                    except:
+                        pass  
+                if re.search(',',data[1]):
+                    try:
+                        data[1]=data[1].replace(' ',',')
+                        temp=re.split(',',data[1])
+                        city=temp[len(temp)-2] # city
+                    except:
+                        pass                                        
+            except:
+                pass   
+        elif re.search('[0-9]{6}',data[1]):
+            temp=re.split(' ',data[1])
+            PINCODE=[x for x in temp if x.isdigit()] #pin code.                
+            if re.search('\s',data[1]):
+                try:
+                    temp=re.split('\s',data[1])
+                    STATE=temp[0] #state
+                except:
+                    pass
+
+    value=(COMPANY_NAME,CARD_HOLDER,DESIGNATION,','.join(MOBILE_NUMBER),EMAIL,WEBSITE,AREA,CITY,STATE,''.join(PINCODE),0)
+    # Insert data into bizcard table
+    query=''' INSERT INTO bizcard.bizcards (COMPANY_NAME,CARD_HOLDER,DESIGNATION,MOBILE_NUMBER,EMAIL,WEBSITE,AREA,CITY,STATE,PINCODE,MODIFIER) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s); '''
+    df,query_status=query_db(query,value)
+    st.success(f'Card holder {CARD_HOLDER}\'s details have been scanned')
+    return query_status
+
+    def query_db(query,data=None):
+    if data is None:
+        data=[]
+    connection=mysql.connect(
+                            host='localhost',
+                            user='root',
+                            password='12345678',
+                            port=3306,
+                            database='bizcard'
+                            )
+    cursor=connection.cursor(buffered=True)
+    cursor.execute(query,data)
+    row_count=cursor.rowcount
+    connection.commit()
+    cursor.execute(''' select * FROM bizcard.bizcards where ID is not null;''')
+    connection.commit()
+    return pd.DataFrame(cursor.fetchall()),row_count
+
+6.The following code will define the streamlit app and its components like tabs , columns ,buttons , dataframe.
 
 ## Application walkthrough
 1. Once the pre-requisites are achieved activate the virtual environment and run the following command.
