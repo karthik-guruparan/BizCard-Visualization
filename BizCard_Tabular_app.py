@@ -56,6 +56,7 @@ def create_db_objects():
         st.success('MySQL table created')
     except Exception:
         st.info('MySQL table already exists')
+        pass
 
 
 def query_db(query, data=None):
