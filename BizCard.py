@@ -1,13 +1,14 @@
-from PIL import Image
-from streamlit_js_eval import streamlit_js_eval
 import easyocr
 import re
 import mysql.connector as mysql
 import pandas as pd
 import streamlit as st
+from PIL import Image
+from streamlit_js_eval import streamlit_js_eval
 
-filepath = '../data/ocr/'
-filepath_mod = '../data/ocr/modified/'
+
+FILEPATH = '../data/ocr/'
+FILEPATH_MOD = '../data/ocr/modified/'
 
 
 def create_db_objects():
@@ -79,14 +80,14 @@ def query_db(query, data=None):
 
 
 def scan_and_read_image(file):
-    data = filepath+file
+    data = FILEPATH+file
     img = Image.open(data)
     img = img.resize((500, 300))  # Resizing the image
-    img.save(filepath_mod+file)
+    img.save(FILEPATH_MOD+file)
     reader = easyocr.Reader(['en'], gpu=False)
     result_para = reader.readtext(
-        filepath_mod+file, decoder='greedy', min_size=2, paragraph=True)  # Scan the image
-    result = reader.readtext(filepath_mod+file, decoder='greedy',
+        FILEPATH_MOD+file, decoder='greedy', min_size=2, paragraph=True)  # Scan the image
+    result = reader.readtext(FILEPATH_MOD+file, decoder='greedy',
                              min_size=2, beamWidth=15, paragraph=False)  # Scan the image
     # Variables for data storage
     COMPANY_NAME = ''
@@ -100,9 +101,9 @@ def scan_and_read_image(file):
     STATE = ''
     PINCODE = ''
 
-    COMPANY_NAME = result_para[len(result_para)-1][1]  # Company name
+    COMPANY_NAME = result_para[len(result_para)-1][1]  # COMPany name
     CARD_HOLDER = result[0][1]  # Cardholder name
-    DESIGNATION = result[1][1]  # designation
+    DESIGNATION = result[1][1]  # DESIGNATION
 
 #    for data in result_para:
 #        st.write('para',data[1])
@@ -187,8 +188,8 @@ st.title(':green[BizCard Scanner]')
 st.divider()
 try:
     #    with st.container(height=500):
-    tab1, tab2 = st.tabs(['1.Upload and Scan BizCard',
-                          '2.View and Modify Details'])
+    tab1, tab2, tab3 = st.tabs(['1.Upload and Scan BizCard',
+                                '2.Form layout', '3.Table Layout'])
     with tab1:
         st.write('\n\n')
         if tab1:
@@ -201,7 +202,7 @@ try:
                 # Refresh page after executing query
                 streamlit_js_eval(
                     js_expressions="parent.window.location.reload()")
-
+    
     with tab2:
         #            with st.container(height=350):
         st.write('\n\n')
@@ -209,7 +210,7 @@ try:
         query1 = 'SELECT * FROM bizcard.bizcards where id is not null;'
         df2, query_status, output = query_db(query1)
         user = st.selectbox('User details', df2[2])
-
+    
         if user:
             query1 = f'''SELECT * FROM (SELECT * FROM bizcard.bizcards where id is not null )a where CARD_HOLDER='{user}' ;'''
             connection = mysql.connect(
@@ -226,8 +227,8 @@ try:
             df, output = pd.DataFrame(output), output
             st.session_state.rowid = output[0][0]
         with st.form('form'):
-            st.text_input('Company', str(output[0][1]), key='comp')
-            st.text_input('Designation', str(output[0][3]), key='Designation')
+            st.text_input('COMPany', str(output[0][1]), key='COMP')
+            st.text_input('DESIGNATION', str(output[0][3]), key='DESIGNATION')
             st.text_input('MobileNumber', str(output[0][4]), key='Mobile')
             st.text_input('Email', str(output[0][5]), key='Email')
             st.text_input('Website', str(output[0][6]), key='Website')
@@ -235,10 +236,10 @@ try:
             st.text_input('City', str(output[0][8]), key='City')
             st.text_input('State', str(output[0][9]), key='State')
             st.text_input('Pincode', str(output[0][10]), key='Pincode')
-
+    
             #       Capture session state as variables
-            comp = str(st.session_state.comp).replace('\'', '')
-            Designation = str(st.session_state.Designation).replace('\'', '')
+            COMP = str(st.session_state.COMP).replace('\'', '')
+            DESIGNATION = str(st.session_state.DESIGNATION).replace('\'', '')
             Mobile = st.session_state.Mobile
             Email = st.session_state.Email
             Website = st.session_state.Website
@@ -247,9 +248,9 @@ try:
             State = st.session_state.State
             Pincode = st.session_state.Pincode
             row_id = st.session_state.rowid
-
-            update_query = f'''update bizcards set COMPANY_NAME  ='{comp}'
-                            ,DESIGNATION   ='{Designation}'
+    
+            update_query = f'''update bizcards set COMPANY_NAME  ='{COMP}'
+                            ,DESIGNATION   ='{DESIGNATION}'
                             ,MOBILE_NUMBER ='{Mobile}'
                             ,EMAIL         ='{Email}'
                             ,WEBSITE       ='{Website}'
@@ -258,20 +259,161 @@ try:
                             ,STATE         ='{State}'
                             ,PINCODE       ='{Pincode}'   
                             where ID={row_id};'''
-
-            col1, col2 = st.columns(2)
+    
+            col1, col2, col3 = st.columns(3)
             with col1:
                 submitted = st.form_submit_button("Submit")
                 if submitted:
                     query_db(update_query)
                     refresh()
             with col2:
+                refresh = st.form_submit_button('Refresh')
+                if refresh:
+                    pass
+    
+            with col3:
                 delete_query = f'''DELETE FROM `bizcard`.`bizcards` WHERE ID={row_id};'''
                 delete = st.form_submit_button('Delete details')
                 if delete:
                     query_db(delete_query)
-                    refresh()
+    
+    with tab3:
+        #            with st.container(height=350):
+        st.write('\n\n')
+        st.subheader('MySQL data')
+        query1 = ''' SELECT * FROM bizcard.bizcards;'''
+        df, query_status, output = query_db(query1)
+        df.rename(columns={0: 'ROW_ID', 1: 'COMPANY_NAME', 2: 'CARD_HOLDER', 3: 'DESIGNATION', 4: 'MOBILE_NUMBER',
+                        5: 'EMAIL', 6: 'WEBSITE', 7: 'AREA', 8: 'CITY', 9: 'STATE', 10: 'PINCODE', 11: 'MODIFIER'}, inplace=True)
+        df['MODIFIER'] = df['MODIFIER'].astype({'MODIFIER': 'bool'})
+        st.data_editor(df[['COMPANY_NAME', 'CARD_HOLDER', 'DESIGNATION', 'MOBILE_NUMBER', 'EMAIL', 'WEBSITE', 'AREA', 'CITY', 'STATE', 'PINCODE', 'MODIFIER']],
+                    column_config={
+            "MODIFIER": st.column_config.CheckboxColumn(
+                "Delete",
+                help="check the box if you want delete the row",
+                default=False
+            )
+        },
+    
+            num_rows="dynamic",
+            key='id_key',
+            hide_index=True)
+        col1, col2, col3 = st.columns(3)
+    #    st.write(edits)
+        with col1:
+            update = st.button('Submit Changes')
+            if update:
+                edits = st.session_state['id_key']
+                for item in edits["edited_rows"]:
+                    modification = []
+                    deletes = []
+                    mod_row = df.loc[item]['ROW_ID']
+                    # 1 get COMPany name
+                    try:
+                        modification.append(
+                            ' COMPANY_NAME=\''+edits["edited_rows"][item]['COMPANY_NAME']+'\'')
+                    except Exception:
+                        pass
+                    # 2 get CARD_HOLDER
+                    try:
+                        modification.append(
+                            ' CARD_HOLDER=\''+edits["edited_rows"][item]['CARD_HOLDER']+'\'')
+                    except Exception:
+                        pass
+                    # 3 get DESIGNATION
+                    try:
+                        modification.append(
+                            ' DESIGNATION=\''+edits["edited_rows"][item]['DESIGNATION']+'\'')
+                    except Exception:
+                        pass
+                    # 2 get MOBILE_NUMBER
+                    try:
+                        modification.append(
+                            ' MOBILE_NUMBER=\''+edits["edited_rows"][item]['MOBILE_NUMBER']+'\'')
+                    except Exception:
+                        pass
+                    # 5 get EMAIL
+                    try:
+                        modification.append(
+                            ' EMAIL=\''+edits["edited_rows"][item]['EMAIL']+'\'')
+                    except Exception:
+                        pass
+                    # 6 get WEBSITE
+                    try:
+                        modification.append(
+                            ' WEBSITE=\''+edits["edited_rows"][item]['WEBSITE']+'\'')
+                    except Exception:
+                        pass
+                    # 8 get AREA
+                    try:
+                        modification.append(
+                            ' AREA=\''+edits["edited_rows"][item]['AREA']+'\'')
+                    except Exception:
+                        pass
+                    # 9 get CARD_HOLDER
+                    try:
+                        modification.append(
+                            ' CITY=\''+edits["edited_rows"][item]['CITY']+'\'')
+                    except Exception:
+                        pass
+                    # 10 get STATE
+                    try:
+                        modification.append(
+                            ' STATE=\''+edits["edited_rows"][item]['STATE']+'\'')
+                    except Exception:
+                        pass
+                    # 10 get PINCODE
+                    try:
+                        modification.append(
+                            ' PINCODE=\''+edits["edited_rows"][item]['PINCODE']+'\'')
+                    except Exception:
+                        pass
+                    # delete rows
+                    try:
+                        delete = edits["edited_rows"][item]['MODIFIER']
+                        if delete:
+                            del_row = df.loc[item]['ROW_ID']
+                            query = 'delete from bizcard.bizcards WHERE ID=' + \
+                                str(del_row)+';'
+                            
+                            df_out, status, output = query_db(query)
 
-
+                    except Exception:
+                        pass
+                    # Update rows
+                    try:
+                        query = 'UPDATE bizcard.bizcards SET ' + \
+                            ','.join(modification) + \
+                            ' WHERE ID='+str(mod_row)+';'
+                        df_out, status, output = query_db(query)
+                    except Exception:
+                        pass
+    
+        with col2:
+            refresh = st.button('Refresh', key='ref2')
+            if refresh:
+                pass
+        with col3:
+            if st.button('Remove duplicates'):
+                query = ''' WITH DATASET AS (SELECT ROW_NUMBER() OVER(PARTITION BY COMPANY_NAME,CARD_HOLDER,DESIGNATION,MOBILE_NUMBER,EMAIL,WEBSITE,AREA,CITY,STATE,PINCODE)ROW_NUM,
+                        `bizcards`.`ID`,
+                        `bizcards`.`COMPANY_NAME`,
+                        `bizcards`.`CARD_HOLDER`,
+                        `bizcards`.`DESIGNATION`,
+                        `bizcards`.`MOBILE_NUMBER`,
+                        `bizcards`.`EMAIL`,
+                        `bizcards`.`WEBSITE`,
+                        `bizcards`.`AREA`,
+                        `bizcards`.`CITY`,
+                        `bizcards`.`STATE`,
+                        `bizcards`.`PINCODE`,
+                        `bizcards`.`MODIFIER`
+                                            FROM `bizcard`.`bizcards`)
+                        DELETE FROM `bizcard`.`bizcards`
+                        WHERE ID IN (SELECT ID FROM DATASET A WHERE ROW_NUM>1);
+                        '''
+                query_db(query)
+                streamlit_js_eval(
+                    js_expressions="parent.window.location.reload()")
 except Exception:
     pass
